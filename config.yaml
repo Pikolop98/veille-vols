@@ -1,0 +1,48 @@
+# ============================================================
+#  C'EST LE SEUL FICHIER QUE TU AURAS BESOIN DE MODIFIER
+# ============================================================
+# Modifie les valeurs a droite des ":", puis enregistre.
+# Les codes des villes sont des codes IATA de 3 lettres.
+#   Paris = PAR   Bangkok = BKK   New York = NYC   Lisbonne = LIS
+#   (PAR couvre CDG + Orly + Beauvais, pratique pour comparer)
+
+origine: PAR
+destination: BKK
+
+# Fenetre de depart : n'importe quel jour entre ces deux dates
+depart_le_plus_tot: 2026-08-18
+depart_le_plus_tard: 2026-08-31
+
+# Durees de sejour recherchees, en jours
+# 30 = environ 1 mois, 60 = environ 2 mois
+durees_jours: [30, 60]
+
+# Tolerance autour de ces durees.
+# 3 signifie qu'un sejour de 27 a 33 jours compte comme "1 mois".
+tolerance_jours: 3
+
+# Devise d'affichage : eur, usd, gbp...
+devise: eur
+
+# true = uniquement les vols sans escale (beaucoup plus cher en general)
+vols_directs_uniquement: false
+
+# ---------------- BAGAGES ----------------
+# Attention : l'API ne sait PAS si un billet inclut un bagage en soute.
+# Ce reglage filtre donc sur la COMPAGNIE, ce qui est une tres bonne
+# approximation (le bagage payant, c'est le modele low-cost).
+#
+# true  = ecarte les compagnies low-cost, ou la soute est presque
+#         toujours en supplement. A choisir si tu pars 1 ou 2 mois.
+# false = garde tout, y compris les billets sans bagage.
+exclure_low_cost: true
+
+# Compagnies considerees comme low-cost. Ajoute ou retire des codes.
+compagnies_low_cost: [FR, W6, U2, TO, HV, VY, EW, V7, PC, DY, D8, N0,
+                      TR, AK, D7, JQ, 5J, VJ, G9, NK, F9, G4]
+
+# Compagnies a ecarter dans tous les cas, low-cost ou pas. Ex : [AF, LH]
+compagnies_exclues: []
+
+# Nombre de lignes affichees dans le tableau de resultats
+nombre_de_resultats: 20

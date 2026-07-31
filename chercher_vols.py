@@ -22,28 +22,42 @@ import yaml
 
 # Le paquet s'appelle "faster-flights" (fork) mais a longtemps expose le
 # module "fast_flights". On essaie les deux plutot que de parier.
-BIBLIOTHEQUE = None
-for _nom in ("faster_flights", "fast_flights"):
+# La bibliotheque a change d'interface entre ses versions 2 et 3.
+# On charge le module, puis on regarde ce qu'il expose reellement.
+_module = None
+for _nom in ("fast_flights", "faster_flights"):
     try:
-        _module = __import__(_nom, fromlist=["FlightData"])
-        FlightData = getattr(_module, "FlightData")
-        Passengers = getattr(_module, "Passengers")
-        get_flights = getattr(_module, "get_flights")
+        _module = __import__(_nom)
         BIBLIOTHEQUE = _nom
         break
-    except Exception:
+    except ImportError:
         continue
 
-if BIBLIOTHEQUE is None:
+if _module is None:
     import pkgutil
-    candidats = sorted(
-        m.name for m in pkgutil.iter_modules()
-        if "flight" in m.name.lower()
-    )
-    print("ERREUR : impossible de charger la bibliotheque de recherche.")
-    print(f"Modules disponibles contenant 'flight' : {candidats or 'aucun'}")
-    print("Envoie cette liste pour qu'on corrige le nom d'import.")
+    candidats = sorted(m.name for m in pkgutil.iter_modules()
+                       if "flight" in m.name.lower())
+    print("ERREUR : bibliotheque de recherche introuvable.")
+    print(f"Modules contenant 'flight' : {candidats or 'aucun'}")
     sys.exit(1)
+
+Passengers = getattr(_module, "Passengers", None)
+get_flights = getattr(_module, "get_flights", None)
+FlightQuery = getattr(_module, "FlightQuery", None)
+create_query = getattr(_module, "create_query", None)
+FlightData = getattr(_module, "FlightData", None)
+
+# Version 3 : create_query + FlightQuery. Version 2 : get_flights(flight_data=...)
+API_MODERNE = FlightQuery is not None and create_query is not None
+
+if get_flights is None or Passengers is None or (
+        not API_MODERNE and FlightData is None):
+    expose = [n for n in dir(_module) if not n.startswith("_")]
+    print(f"ERREUR : le module {BIBLIOTHEQUE} n'expose pas les fonctions attendues.")
+    print(f"Il contient : {expose}")
+    print("Envoie cette liste pour qu'on adapte le code.")
+    sys.exit(1)
+
 
 RACINE = Path(__file__).resolve().parent
 FICHIER_RESULTATS = RACINE / "RESULTATS.md"
@@ -122,11 +136,33 @@ def paires_de_dates(cfg):
 # ------------------------------------------------------------------
 
 def prix_en_nombre(valeur):
-    """'1 234 EUR' ou 'EUR1,234' -> 1234.0"""
+    """'1 034 EUR', 'EUR1,034.50' ou 878.0 -> nombre."""
     if valeur is None:
         return None
-    chiffres = re.sub(r"[^\d]", "", str(valeur))
-    return float(chiffres) if chiffres else None
+    if isinstance(valeur, (int, float)):
+        return float(valeur)
+
+    txt = re.sub(r"[^\d.,]", "", str(valeur))
+    if not txt:
+        return None
+
+    if "," in txt and "." in txt:
+        # le dernier separateur rencontre est le separateur decimal
+        if txt.rfind(",") > txt.rfind("."):
+            txt = txt.replace(".", "").replace(",", ".")
+        else:
+            txt = txt.replace(",", "")
+    elif "," in txt:
+        txt = (txt.replace(",", ".") if len(txt.split(",")[-1]) in (1, 2)
+               else txt.replace(",", ""))
+    elif "." in txt:
+        if len(txt.split(".")[-1]) not in (1, 2):
+            txt = txt.replace(".", "")
+
+    try:
+        return float(txt)
+    except ValueError:
+        return None
 
 
 def texte(objet, *noms):
@@ -138,35 +174,64 @@ def texte(objet, *noms):
     return None
 
 
+_PREMIER_VOL_INSPECTE = False
+
+
+def inspecter(vol):
+    """Affiche une seule fois les attributs reels d'un vol, pour diagnostic."""
+    global _PREMIER_VOL_INSPECTE
+    if _PREMIER_VOL_INSPECTE:
+        return
+    _PREMIER_VOL_INSPECTE = True
+    champs = [n for n in dir(vol) if not n.startswith("_")]
+    print(f"  (structure d'un vol : {champs})")
+
+
+def compagnie_de(vol):
+    valeur = texte(vol, "airlines", "name", "airline", "carrier")
+    if isinstance(valeur, (list, tuple, set)):
+        return ", ".join(str(v) for v in valeur if v) or "?"
+    return str(valeur) if valeur else "?"
+
+
 def interroger(cfg, depart, retour):
     """Renvoie la liste des vols trouves pour ce couple de dates."""
-    aller_retour = [
-        FlightData(
-            date=depart.isoformat(),
-            from_airport=cfg["origine"],
-            to_airport=cfg["destination"],
-        ),
-        FlightData(
-            date=retour.isoformat(),
-            from_airport=cfg["destination"],
-            to_airport=cfg["origine"],
-        ),
+    trajets = [
+        (depart, cfg["origine"], cfg["destination"]),
+        (retour, cfg["destination"], cfg["origine"]),
     ]
 
-    resultat = get_flights(
-        flight_data=aller_retour,
-        trip="round-trip",
-        seat="economy",
-        passengers=Passengers(
-            adults=1, children=0, infants_in_seat=0, infants_on_lap=0
-        ),
-        fetch_mode="fallback",
-    )
+    if API_MODERNE:
+        requete = create_query(
+            flights=[
+                FlightQuery(date=d.isoformat(), from_airport=a, to_airport=b)
+                for d, a, b in trajets
+            ],
+            trip="round-trip",
+            seat="economy",
+            passengers=Passengers(adults=1),
+            language="fr-FR",
+            currency=cfg.get("devise", "EUR"),
+        )
+        vols = list(get_flights(requete) or [])
+    else:
+        resultat = get_flights(
+            flight_data=[
+                FlightData(date=d.isoformat(), from_airport=a, to_airport=b)
+                for d, a, b in trajets
+            ],
+            trip="round-trip",
+            seat="economy",
+            passengers=Passengers(
+                adults=1, children=0, infants_in_seat=0, infants_on_lap=0
+            ),
+            fetch_mode="fallback",
+        )
+        vols = list(getattr(resultat, "flights", None) or [])
 
-    vols = getattr(resultat, "flights", None) or []
     sorties = []
-
     for vol in vols:
+        inspecter(vol)
         prix = prix_en_nombre(texte(vol, "price"))
         if not prix:
             continue
@@ -180,7 +245,7 @@ def interroger(cfg, depart, retour):
             "retour": retour,
             "duree": (retour - depart).days,
             "prix": prix,
-            "compagnie": str(texte(vol, "name", "airline") or "?"),
+            "compagnie": compagnie_de(vol),
             "escales": escales if escales is not None else "?",
             "horaire": str(texte(vol, "departure") or ""),
         })
@@ -329,7 +394,8 @@ def main():
     horodatage = dt.datetime.now(dt.timezone.utc)
 
     print(f"Recherche {cfg['origine']} -> {cfg['destination']} (Google Flights)")
-    print(f"Bibliotheque chargee : {BIBLIOTHEQUE}")
+    print(f"Bibliotheque : {BIBLIOTHEQUE}, interface "
+          f"{'v3' if API_MODERNE else 'v2'}")
     print(f"Depart du {cfg['depart_le_plus_tot']} au {cfg['depart_le_plus_tard']}")
     print(f"Sejours de {cfg['durees_jours']} jours (+/- {cfg['tolerance_jours']})")
     print()

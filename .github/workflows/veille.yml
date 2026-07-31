@@ -11,6 +11,7 @@ permissions:
 jobs:
   chercher:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Recuperer le code du depot
@@ -25,15 +26,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Lancer la recherche
-        env:
-          TRAVELPAYOUTS_TOKEN: ${{ secrets.TRAVELPAYOUTS_TOKEN }}
         run: python chercher_vols.py
 
       - name: Enregistrer les resultats dans le depot
         run: |
           git config user.name "veille-vols"
           git config user.email "actions@github.com"
-          git add RESULTATS.md historique.csv
+          git add donnees.json RESULTATS.md historique.csv
           if git diff --staged --quiet; then
             echo "Aucun changement de prix, rien a enregistrer."
           else

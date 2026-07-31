@@ -1,37 +1,45 @@
 # ============================================================
-#  C'EST LE SEUL FICHIER QUE TU AURAS BESOIN DE MODIFIER
+#  LE SEUL FICHIER A MODIFIER
 # ============================================================
+# Ici tu definis ce que le robot va RATISSER chaque matin.
+# Le tri fin (partir apres telle date, sejour de tant de jours)
+# se fait ensuite directement sur la page web, sans attendre.
 
-# ATTENTION : cette version interroge Google Flights, qui veut des codes
-# d'AEROPORT, pas de ville. Ecris CDG (et non PAR), ORY, BVA, NCE, LYS...
+# Codes d'AEROPORT a 3 lettres, pas de ville.
+# CDG Roissy, ORY Orly, BVA Beauvais, NCE Nice, LYS Lyon
+# FOR Fortaleza, REC Recife, NAT Natal, GRU Sao Paulo
 origine: CDG
 destination: FOR
 
-# Fenetre de depart : n'importe quel jour entre ces deux dates
-depart_le_plus_tot: 2026-08-18
-depart_le_plus_tard: 2026-08-31
+# Fenetre ratissee. Prends large : tu affineras sur la page.
+depart_le_plus_tot: 2026-08-15
+depart_le_plus_tard: 2026-09-15
 
-# Durees de sejour recherchees, en jours
+# Durees de sejour visees, en jours
 durees_jours: [30, 60]
 
-# Tolerance autour de ces durees.
-# ATTENTION : chaque jour de tolerance multiplie le nombre de requetes.
-# 0 = 28 requetes. 1 = 84 requetes. 3 = 196 requetes.
-# Google bloque si on l'interroge trop : reste bas.
-tolerance_jours: 0
+# Marge autour de ces durees, et par quel pas la balayer.
+# tolerance 2 + pas 2 donne : 28, 30, 32 et 58, 60, 62 jours.
+tolerance_jours: 2
+pas_tolerance: 2
 
-# Plafond de securite. Au-dela, le script echantillonne au lieu de tout tester.
-max_requetes: 60
+# Plafond de securite. Au-dela, le robot echantillonne.
+# 120 requetes a 8s font environ 20 minutes de recherche.
+max_requetes: 120
 
-# Pause entre deux interrogations, en secondes. Ne descends pas sous 2.
+# Pause entre deux interrogations. Sous 8 secondes, Google
+# commence a ne plus repondre : c'est teste, ne descends pas.
 pause_secondes: 8
 
-# true = uniquement les vols sans escale
-vols_directs_uniquement: false
+# Devise des prix demandes a Google
+devise: EUR
 
 # ---------------- BAGAGES ----------------
-# Google ne transmet pas non plus le detail bagage. On filtre par compagnie.
+# Les low-cost ne sont plus supprimees : elles sont marquees,
+# et tu les masques ou les affiches d'un clic sur la page.
+# Ce reglage ne sert plus qu'aux fichiers texte de secours.
 exclure_low_cost: true
+
 compagnies_low_cost:
   - Ryanair
   - Wizz Air
@@ -53,5 +61,5 @@ compagnies_low_cost:
   - Frontier
   - Allegiant
 
-# Nombre de lignes affichees dans le tableau
+# Lignes affichees dans le RESULTATS.md de secours
 nombre_de_resultats: 20

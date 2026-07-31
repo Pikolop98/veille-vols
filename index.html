@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veille de prix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --nuit:#0E1626;
+  --panneau:#16223A;
+  --panneau-clair:#1E2C48;
+  --trait:#2A3A5C;
+  --sable:#F2E3C8;
+  --ambre:#E8A33D;
+  --brique:#A6403D;
+  --craie:#DCE3F0;
+  --brume:#7C8CA8;
+  --r:4px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:var(--nuit);
+  color:var(--craie);
+  font-family:"Archivo",system-ui,sans-serif;
+  font-variation-settings:"wdth" 100;
+  line-height:1.5;
+  padding:clamp(16px,4vw,48px);
+  max-width:1180px;
+  margin:0 auto;
+  -webkit-font-smoothing:antialiased;
+}
+
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+/* ---------- en-tete ---------- */
+header{border-bottom:1px solid var(--trait);padding-bottom:20px;margin-bottom:32px}
+
+.trajet{
+  font-variation-settings:"wdth" 125,"wght" 700;
+  font-size:clamp(30px,7vw,60px);
+  line-height:1.05;
+  letter-spacing:.01em;
+  text-transform:uppercase;
+}
+.fleche{color:var(--ambre);margin:0 .12em}
+
+.releve{
+  color:var(--brume);font-size:12px;text-transform:uppercase;
+  letter-spacing:.16em;margin-top:10px;
+}
+
+/* ---------- prix vedette ---------- */
+.vedette{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px;
+  margin-bottom:36px;
+}
+.vedette-prix{
+  font-family:"IBM Plex Mono",monospace;font-weight:600;
+  font-size:clamp(48px,13vw,104px);line-height:1;
+  color:var(--sable);font-variant-numeric:tabular-nums;
+}
+.vedette-devise{font-size:.34em;color:var(--brume);margin-left:.12em}
+.vedette-detail{color:var(--brume);font-size:15px;padding-bottom:6px}
+.vedette-detail b{color:var(--craie);font-weight:600}
+
+/* ---------- reglages ---------- */
+.reglages{
+  background:var(--panneau);border:1px solid var(--trait);border-radius:var(--r);
+  padding:20px;margin-bottom:36px;
+  display:grid;gap:18px 22px;
+  grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
+}
+.champ{display:flex;flex-direction:column;gap:7px;min-width:0}
+.champ label{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--brume);
+}
+.champ input,.champ select{
+  background:var(--nuit);border:1px solid var(--trait);border-radius:var(--r);
+  color:var(--craie);padding:9px 10px;font:inherit;font-size:14px;width:100%;
+  font-family:"IBM Plex Mono",monospace;
+}
+.champ input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--ambre)}
+input:focus-visible,select:focus-visible,button:focus-visible{
+  outline:2px solid var(--ambre);outline-offset:2px;
+}
+.duo{display:flex;gap:8px}
+.duo input{width:50%}
+
+.bascule{display:flex;align-items:center;gap:9px;font-size:14px;align-self:end;padding-bottom:9px}
+.bascule input{width:16px;height:16px;accent-color:var(--ambre)}
+
+.reinit{
+  background:none;border:1px solid var(--trait);border-radius:var(--r);
+  color:var(--brume);padding:9px 14px;font:inherit;font-size:13px;cursor:pointer;
+  align-self:end;transition:color .15s,border-color .15s;
+}
+.reinit:hover{color:var(--craie);border-color:var(--brume)}
+
+/* ---------- titres de section ---------- */
+h2{
+  font-variation-settings:"wdth" 112,"wght" 600;
+  font-size:13px;text-transform:uppercase;letter-spacing:.2em;
+  color:var(--brume);margin-bottom:6px;
+}
+.sous{color:var(--brume);font-size:13.5px;margin-bottom:18px}
+section{margin-bottom:44px}
+
+/* ---------- calendrier ---------- */
+.mois{margin-bottom:26px}
+.mois-nom{
+  font-variation-settings:"wdth" 100,"wght" 600;
+  font-size:14px;letter-spacing:.05em;margin-bottom:10px;color:var(--craie);
+}
+.grille{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.jour-nom{
+  text-align:center;font-size:10px;color:var(--brume);
+  text-transform:uppercase;letter-spacing:.1em;padding-bottom:3px;
+}
+.case{
+  aspect-ratio:1;border:0;border-radius:var(--r);background:var(--panneau);
+  color:var(--brume);font:inherit;cursor:default;padding:5px 3px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;transition:transform .12s;
+}
+.case.vide{background:transparent}
+.case.dispo{cursor:pointer}
+.case.dispo:hover{transform:scale(1.07)}
+.case.choisie{outline:2.5px solid var(--craie);outline-offset:1px}
+.case .num{font-size:11px;opacity:.72}
+.case .prix{
+  font-family:"IBM Plex Mono",monospace;font-weight:600;
+  font-size:clamp(10px,2.4vw,13px);font-variant-numeric:tabular-nums;
+}
+
+.echelle{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--brume);margin-top:14px}
+.echelle .barre{
+  height:7px;flex:1;max-width:190px;border-radius:99px;
+  background:linear-gradient(90deg,var(--sable),var(--ambre),var(--brique));
+}
+
+/* ---------- tableau ---------- */
+.enveloppe{overflow-x:auto;border:1px solid var(--trait);border-radius:var(--r)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+th{
+  text-align:left;padding:11px 13px;background:var(--panneau);
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--brume);font-weight:600;cursor:pointer;white-space:nowrap;
+  border-bottom:1px solid var(--trait);user-select:none;
+}
+th:hover{color:var(--craie)}
+th .fl{opacity:.45;font-size:9px;margin-left:3px}
+th.actif{color:var(--ambre)}
+th.actif .fl{opacity:1}
+td{padding:11px 13px;border-bottom:1px solid var(--trait)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--panneau-clair)}
+.cell-prix{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--sable);white-space:nowrap}
+.cell-date{font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+.etiquette{
+  display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid var(--brique);color:var(--brique);
+  border-radius:99px;padding:1px 7px;margin-left:7px;vertical-align:1px;
+}
+td a{color:var(--ambre);text-decoration:none;border-bottom:1px solid transparent}
+td a:hover{border-bottom-color:var(--ambre)}
+
+.vide-message{
+  border:1px dashed var(--trait);border-radius:var(--r);
+  padding:34px 22px;text-align:center;color:var(--brume);
+}
+.vide-message b{color:var(--craie);display:block;margin-bottom:6px;font-size:15px}
+
+footer{
+  border-top:1px solid var(--trait);padding-top:18px;
+  color:var(--brume);font-size:12.5px;line-height:1.7;
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="trajet" id="trajet">— <span class="fleche">→</span> —</div>
+  <div class="releve" id="releve">Chargement</div>
+</header>
+
+<div class="vedette" id="vedette"></div>
+
+<div class="reglages">
+  <div class="champ">
+    <label for="apres">Départ à partir du</label>
+    <input type="date" id="apres">
+  </div>
+  <div class="champ">
+    <label for="avant">Départ jusqu'au</label>
+    <input type="date" id="avant">
+  </div>
+  <div class="champ">
+    <label for="dmin">Durée du séjour (jours)</label>
+    <div class="duo">
+      <input type="number" id="dmin" min="1" max="400" placeholder="min">
+      <input type="number" id="dmax" min="1" max="400" placeholder="max">
+    </div>
+  </div>
+  <div class="champ">
+    <label for="pmax">Prix maximum · <span class="mono" id="pmax-val">—</span></label>
+    <input type="range" id="pmax" min="0" max="5000" step="10">
+  </div>
+  <div class="champ">
+    <label for="escales">Escales</label>
+    <select id="escales">
+      <option value="">Peu importe</option>
+      <option value="0">Vol direct</option>
+      <option value="1">1 escale maximum</option>
+      <option value="2">2 escales maximum</option>
+    </select>
+  </div>
+  <label class="bascule">
+    <input type="checkbox" id="lowcost" checked>
+    Masquer les low-cost
+  </label>
+  <button class="reinit" id="reinit">Tout réafficher</button>
+</div>
+
+<section>
+  <h2>Calendrier des départs</h2>
+  <p class="sous">Chaque case donne le meilleur prix trouvé pour un départ ce jour-là. Clique sur un jour pour n'afficher que celui-ci.</p>
+  <div id="calendrier"></div>
+  <div class="echelle">
+    <span>Moins cher</span><div class="barre"></div><span>Plus cher</span>
+  </div>
+</section>
+
+<section>
+  <h2>Vols retenus</h2>
+  <p class="sous" id="compteur">—</p>
+  <div id="tableau"></div>
+</section>
+
+<footer id="pied"></footer>
+
+<script>
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet",
+              "août","septembre","octobre","novembre","décembre"];
+const JOURS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+
+let DATA = null;
+let tri = {colonne:"p", sens:1};
+let jourChoisi = null;
+
+const $ = id => document.getElementById(id);
+const jour = iso => { const [a,m,j] = iso.split("-").map(Number);
+                      return new Date(Date.UTC(a, m-1, j)); };
+const court = iso => { const d = jour(iso);
+                       return d.getUTCDate() + " " + MOIS[d.getUTCMonth()].slice(0,4); };
+
+/* ---------- echelle de couleur : sable -> ambre -> brique ---------- */
+function couleur(t){
+  const paliers = [[242,227,200],[232,163,61],[166,64,61]];
+  t = Math.max(0, Math.min(1, t));
+  const p = t * (paliers.length - 1);
+  const i = Math.min(Math.floor(p), paliers.length - 2);
+  const f = p - i;
+  const c = paliers[i].map((v, k) => Math.round(v + (paliers[i+1][k] - v) * f));
+  return {css:`rgb(${c[0]},${c[1]},${c[2]})`,
+          texte:(c[0]*.299 + c[1]*.587 + c[2]*.114) > 145 ? "#0E1626" : "#F6F1E6"};
+}
+
+/* ---------- filtrage ---------- */
+function filtrees(ignorerJour){
+  if(!DATA) return [];
+  const apres = $("apres").value, avant = $("avant").value;
+  const dmin = parseInt($("dmin").value) || 0;
+  const dmax = parseInt($("dmax").value) || 9999;
+  const pmax = parseInt($("pmax").value) || Infinity;
+  const esc = $("escales").value;
+  const sansLC = $("lowcost").checked;
+
+  return DATA.offres.filter(o => {
+    if(!ignorerJour && jourChoisi && o.d !== jourChoisi) return false;
+    if(apres && o.d < apres) return false;
+    if(avant && o.d > avant) return false;
+    if(o.j < dmin || o.j > dmax) return false;
+    if(o.p > pmax) return false;
+    if(esc !== "" && (o.e === null || o.e > parseInt(esc))) return false;
+    if(sansLC && o.lc) return false;
+    return true;
+  });
+}
+
+/* ---------- rendu ---------- */
+function vedette(offres){
+  const boite = $("vedette");
+  if(!offres.length){ boite.innerHTML = ""; return; }
+  const m = offres.reduce((a,b) => b.p < a.p ? b : a);
+  boite.innerHTML =
+    `<div class="vedette-prix">${m.p}<span class="vedette-devise">${DATA.devise}</span></div>
+     <div class="vedette-detail">
+       Départ le <b>${court(m.d)}</b>, retour le <b>${court(m.r)}</b><br>
+       ${m.j} jours sur place · ${m.c}
+     </div>`;
+}
+
+function calendrier(offres){
+  const boite = $("calendrier");
+  const parJour = new Map();
+  for(const o of offres){
+    const actuel = parJour.get(o.d);
+    if(actuel === undefined || o.p < actuel) parJour.set(o.d, o.p);
+  }
+
+  const prix = [...parJour.values()];
+  const bas = Math.min(...prix), haut = Math.max(...prix);
+  const debut = jour(DATA.fenetre.debut), fin = jour(DATA.fenetre.fin);
+
+  let html = "";
+  let curseur = new Date(Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth(), 1));
+
+  while(curseur <= fin){
+    const an = curseur.getUTCFullYear(), mois = curseur.getUTCMonth();
+    const nbJours = new Date(Date.UTC(an, mois+1, 0)).getUTCDate();
+    const decalage = (new Date(Date.UTC(an, mois, 1)).getUTCDay() + 6) % 7;
+
+    html += `<div class="mois"><div class="mois-nom">${MOIS[mois]} ${an}</div><div class="grille">`;
+    html += JOURS.map(j => `<div class="jour-nom">${j}</div>`).join("");
+    html += `<div class="case vide"></div>`.repeat(decalage);
+
+    for(let d = 1; d <= nbJours; d++){
+      const iso = `${an}-${String(mois+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const p = parJour.get(iso);
+      if(p === undefined){
+        html += `<button class="case" disabled><span class="num">${d}</span></button>`;
+      }else{
+        const t = haut === bas ? 0 : (p - bas) / (haut - bas);
+        const c = couleur(t);
+        const choisie = jourChoisi === iso ? " choisie" : "";
+        html += `<button class="case dispo${choisie}" data-jour="${iso}"
+                   style="background:${c.css};color:${c.texte}"
+                   aria-label="${d} ${MOIS[mois]}, à partir de ${p} ${DATA.devise}">
+                   <span class="num">${d}</span><span class="prix">${p}</span></button>`;
+      }
+    }
+    html += `</div></div>`;
+    curseur = new Date(Date.UTC(an, mois+1, 1));
+  }
+
+  boite.innerHTML = html || `<p class="sous">Aucun départ à afficher.</p>`;
+  boite.querySelectorAll(".case.dispo").forEach(c => {
+    c.onclick = () => {
+      jourChoisi = (jourChoisi === c.dataset.jour) ? null : c.dataset.jour;
+      dessiner();
+    };
+  });
+}
+
+function tableau(offres){
+  const boite = $("tableau");
+  if(!offres.length){
+    boite.innerHTML = `<div class="vide-message">
+      <b>Aucun vol ne correspond</b>
+      Élargis la fenêtre de dates, la durée, ou remonte le prix maximum.</div>`;
+    return;
+  }
+
+  const colonnes = [
+    ["p","Prix"],["d","Départ"],["r","Retour"],["j","Durée"],
+    ["c","Compagnie"],["e","Escales"]
+  ];
+
+  const rangees = [...offres].sort((a,b) => {
+    const x = a[tri.colonne], y = b[tri.colonne];
+    if(x === null) return 1;
+    if(y === null) return -1;
+    return (x > y ? 1 : x < y ? -1 : 0) * tri.sens;
+  }).slice(0, 80);
+
+  let html = `<div class="enveloppe"><table><thead><tr>`;
+  for(const [cle, nom] of colonnes){
+    const actif = tri.colonne === cle;
+    html += `<th data-cle="${cle}" class="${actif ? "actif" : ""}">${nom}
+      <span class="fl">${actif ? (tri.sens === 1 ? "▲" : "▼") : "▲"}</span></th>`
+      .replace("<th ", `<th tabindex="0" role="button" aria-label="Trier par ${nom}" `);
+  }
+  html += `<th>Voir</th></tr></thead><tbody>`;
+
+  for(const o of rangees){
+    const lien = `https://www.google.com/travel/flights?q=Flights%20from%20${DATA.origine}%20to%20${DATA.destination}%20on%20${o.d}%20through%20${o.r}`;
+    html += `<tr>
+      <td class="cell-prix">${o.p} ${DATA.devise}</td>
+      <td class="cell-date">${court(o.d)}</td>
+      <td class="cell-date">${court(o.r)}</td>
+      <td class="mono">${o.j} j</td>
+      <td>${o.c}${o.lc ? '<span class="etiquette">bagage payant</span>' : ""}</td>
+      <td class="mono">${o.e === null ? "—" : o.e}</td>
+      <td><a href="${lien}" target="_blank" rel="noopener">Ouvrir</a></td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  boite.innerHTML = html;
+
+  boite.querySelectorAll("th[data-cle]").forEach(th => {
+    const trier = () => {
+      const cle = th.dataset.cle;
+      tri.sens = (tri.colonne === cle) ? -tri.sens : 1;
+      tri.colonne = cle;
+      dessiner();
+    };
+    th.onclick = trier;
+    th.onkeydown = e => {
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); trier(); }
+    };
+  });
+}
+
+function dessiner(){
+  const offres = filtrees(false);
+  const paysage = filtrees(true);
+  const dates = new Set(offres.map(o => o.d));
+  $("compteur").textContent = jourChoisi
+    ? `${offres.length} vols au départ du ${court(jourChoisi)} · clique à nouveau sur le jour pour tout revoir`
+    : `${offres.length} vols sur ${dates.size} dates de départ`;
+  $("pmax-val").textContent = $("pmax").value + " " + DATA.devise;
+  vedette(offres);
+  calendrier(paysage);
+  tableau(offres);
+}
+
+function reinitialiser(){
+  jourChoisi = null;
+  $("apres").value = DATA.fenetre.debut;
+  $("avant").value = DATA.fenetre.fin;
+  const durees = DATA.durees_cibles || [30];
+  $("dmin").value = Math.min(...durees) - 4;
+  $("dmax").value = Math.max(...durees) + 4;
+  const haut = Math.max(...DATA.offres.map(o => o.p), 100);
+  $("pmax").max = haut;
+  $("pmax").value = haut;
+  $("escales").value = "";
+  $("lowcost").checked = true;
+  dessiner();
+}
+
+/* ---------- demarrage ---------- */
+fetch("donnees.json?t=" + Date.now())
+  .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => {
+    DATA = d;
+    $("trajet").innerHTML = `${d.origine}<span class="fleche">→</span>${d.destination}`;
+    const h = d.genere_le.replace("T"," ").replace("Z","");
+    $("releve").textContent = `Relevé du ${h} UTC · ${d.combinaisons_testees} combinaisons testées`;
+    $("pied").innerHTML =
+      `Prix relevés sur Google Flights au moment du passage du robot, mis à jour chaque matin.
+       Ils bougent en permanence : ouvre le lien pour voir le tarif réel avant de réserver.<br>
+       L'étiquette « bagage payant » se déduit de la compagnie, pas du billet — même sur une
+       grande compagnie, un tarif basic peut exclure la soute.`;
+    ["apres","avant","dmin","dmax","pmax","escales","lowcost"].forEach(id =>
+      $(id).addEventListener("input", () => { jourChoisi = null; dessiner(); }));
+    $("reinit").onclick = reinitialiser;
+    reinitialiser();
+  })
+  .catch(e => {
+    $("releve").textContent = "Données introuvables";
+    $("vedette").innerHTML =
+      `<div class="vide-message" style="width:100%">
+        <b>Le fichier donnees.json est absent</b>
+        Lance une recherche depuis l'onglet Actions du dépôt, puis recharge cette page.
+        (${e.message})</div>`;
+  });
+</script>
+</body>
+</html>

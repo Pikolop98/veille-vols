@@ -24,6 +24,10 @@ tolerance_jours: 3
 # Devise d'affichage : eur, usd, gbp...
 devise: eur
 
+# Marche source des donnees. IMPORTANT : la valeur par defaut de l'API est "ru"
+# (marche russe), ce qui donne des resultats tres pauvres au depart de France.
+marche: fr
+
 # true = uniquement les vols sans escale (beaucoup plus cher en general)
 vols_directs_uniquement: false
 

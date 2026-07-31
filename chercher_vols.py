@@ -16,6 +16,7 @@ import csv
 import datetime as dt
 import os
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -57,6 +58,7 @@ def charger_config():
     cfg.setdefault("tolerance_jours", 3)
     cfg.setdefault("vols_directs_uniquement", False)
     cfg.setdefault("nombre_de_resultats", 20)
+    cfg["marche"] = str(cfg.get("marche", "fr")).lower().strip()
     cfg.setdefault("exclure_low_cost", True)
     cfg.setdefault("compagnies_low_cost", [])
     cfg.setdefault("compagnies_exclues", [])
@@ -84,20 +86,19 @@ def durees_acceptees(cfg):
     return valides
 
 
-def mois_a_interroger(cfg):
+def paires_de_dates(cfg):
     """
-    Liste des couples (mois de depart, mois de retour) a demander a l'API.
-    On interroge par mois plutot que jour par jour : beaucoup moins de
-    requetes, et le cache de l'API repond mieux.
+    Liste des couples (date de depart, date de retour) exacts a demander.
+    On interroge jour par jour : le format "mois entier" est refuse par
+    l'API des que l'ecart depart/retour depasse un mois.
     """
-    couples = set()
+    couples = []
     jour = cfg["depart_le_plus_tot"]
     while jour <= cfg["depart_le_plus_tard"]:
-        for duree in durees_acceptees(cfg):
-            retour = jour + dt.timedelta(days=duree)
-            couples.add((jour.strftime("%Y-%m"), retour.strftime("%Y-%m")))
+        for duree in sorted(durees_acceptees(cfg)):
+            couples.append((jour, jour + dt.timedelta(days=duree)))
         jour += dt.timedelta(days=1)
-    return sorted(couples)
+    return couples
 
 
 # ------------------------------------------------------------------
@@ -115,33 +116,39 @@ def recuperer_token():
     return token
 
 
-def interroger_api(cfg, token, mois_depart, mois_retour):
+def interroger_api(cfg, token, depart, retour, silencieux=False):
     params = {
         "origin": cfg["origine"],
         "destination": cfg["destination"],
-        "departure_at": mois_depart,
-        "return_at": mois_retour,
+        "departure_at": depart if isinstance(depart, str) else depart.isoformat(),
         "currency": cfg["devise"],
+        "market": cfg["marche"],
         "sorting": "price",
-        "limit": 1000,
+        "limit": 100,
         "page": 1,
         "one_way": "false",
         "direct": "true" if cfg["vols_directs_uniquement"] else "false",
         "token": token,
     }
+    if retour is not None:
+        params["return_at"] = retour if isinstance(retour, str) else retour.isoformat()
     try:
         reponse = requests.get(API_URL, params=params, timeout=45)
     except requests.RequestException as erreur:
-        print(f"  ! probleme reseau ({erreur}), on passe au suivant")
+        if not silencieux:
+            print(f"  ! probleme reseau ({erreur})")
         return []
 
     if reponse.status_code != 200:
-        print(f"  ! l'API a repondu {reponse.status_code}, on passe au suivant")
+        if not silencieux:
+            print(f"  ! l'API a repondu {reponse.status_code} "
+                  f"({reponse.text[:120]})")
         return []
 
     donnees = reponse.json()
     if not donnees.get("success", False):
-        print(f"  ! erreur API : {donnees.get('error')}")
+        if not silencieux:
+            print(f"  ! erreur API : {donnees.get('error')}")
         return []
 
     return donnees.get("data") or []
@@ -343,25 +350,74 @@ def ajouter_historique(resultats, cfg, horodatage):
 
 # ------------------------------------------------------------------
 
+def diagnostic(brutes, cfg):
+    """Affiche ce que l'API a reellement renvoye, quand rien ne colle."""
+    if not brutes:
+        print("\nL'API n'a renvoye aucune offre du tout.")
+        print("Verifie les codes de villes et le marche dans config.yaml.")
+        return
+
+    departs, durees = [], []
+    for o in brutes:
+        d = date_seule(o.get("departure_at"))
+        r = date_seule(o.get("return_at"))
+        if d:
+            departs.append(d)
+        if d and r:
+            durees.append((r - d).days)
+
+    print("\n--- Diagnostic : contenu reel du cache ---")
+    if departs:
+        print(f"Departs proposes : du {min(departs)} au {max(departs)}")
+    if durees:
+        print(f"Durees proposees : de {min(durees)} a {max(durees)} jours")
+        courantes = sorted(set(durees))[:20]
+        print(f"Durees disponibles : {courantes}")
+    print(f"Ta fenetre : {cfg['depart_le_plus_tot']} -> {cfg['depart_le_plus_tard']}")
+    print(f"Tes durees : {sorted(durees_acceptees(cfg))}")
+    print("-------------------------------------------")
+
+
 def main():
     cfg = charger_config()
     token = recuperer_token()
     horodatage = dt.datetime.now(dt.timezone.utc)
 
-    print(f"Recherche {cfg['origine']} -> {cfg['destination']}")
+    print(f"Recherche {cfg['origine']} -> {cfg['destination']} (marche {cfg['marche']})")
     print(f"Depart du {cfg['depart_le_plus_tot']} au {cfg['depart_le_plus_tard']}")
     print(f"Sejours de {cfg['durees_jours']} jours (+/- {cfg['tolerance_jours']})")
     print()
 
     brutes = []
-    couples = mois_a_interroger(cfg)
-    for mois_depart, mois_retour in couples:
-        print(f"  interrogation depart {mois_depart} / retour {mois_retour}...")
-        brutes.extend(interroger_api(cfg, token, mois_depart, mois_retour))
+
+    # 1) Balayage large : tout ce que le cache connait sur ce mois de depart.
+    for mois in sorted({cfg["depart_le_plus_tot"].strftime("%Y-%m"),
+                        cfg["depart_le_plus_tard"].strftime("%Y-%m")}):
+        print(f"  balayage large du mois {mois}...")
+        brutes.extend(interroger_api(cfg, token, mois, None))
+
+    print(f"  -> {len(brutes)} offres apres balayage large")
+
+    # 2) Interrogation ciblee, date par date.
+    couples = paires_de_dates(cfg)
+    print(f"\n  {len(couples)} combinaisons de dates a tester...")
+    trouvees = 0
+    for i, (depart, retour) in enumerate(couples, 1):
+        offres = interroger_api(cfg, token, depart, retour, silencieux=True)
+        trouvees += len(offres)
+        brutes.extend(offres)
+        if i % 25 == 0:
+            print(f"    {i}/{len(couples)} testees, {trouvees} offres trouvees")
+        time.sleep(0.25)
+
+    print(f"  -> {trouvees} offres apres interrogation ciblee")
 
     print(f"\n{len(brutes)} offres recuperees au total.")
     resultats = filtrer(brutes, cfg)
     print(f"{len(resultats)} offres correspondent a tes criteres.")
+
+    if not resultats:
+        diagnostic(brutes, cfg)
 
     ecrire_resultats(resultats, cfg, horodatage)
     ajouter_historique(resultats, cfg, horodatage)
@@ -371,8 +427,6 @@ def main():
         m = resultats[0]
         print(f"\nMeilleur prix : {m['prix']:.0f} {devise} "
               f"({m['depart']:%d/%m} -> {m['retour']:%d/%m}, {m['duree']} jours)")
-    else:
-        print("\nAucune offre trouvee. Voir RESULTATS.md pour les pistes.")
 
     print(f"\nEcrit dans {FICHIER_RESULTATS.name} et {FICHIER_HISTORIQUE.name}.")
 

@@ -1,6 +1,6 @@
 # Prix les moins chers : PAR vers BKK
 
-*Mis a jour le 31/07/2026 a 14h07 (UTC).*
+*Mis a jour le 31/07/2026 a 14h28 (UTC).*
 
 Depart entre le **18/08/2026** et le **31/08/2026**, sejour de 30 jours ou 60 jours (tolerance 3 jours).
 

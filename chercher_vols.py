@@ -237,6 +237,10 @@ def interroger(cfg, depart, retour):
             continue
 
         escales = texte(vol, "stops")
+        if escales is None:
+            segments = getattr(vol, "flights", None)
+            if isinstance(segments, (list, tuple)) and segments:
+                escales = len(segments) - 1
         if cfg["vols_directs_uniquement"] and escales not in (0, "0", None):
             continue
 
@@ -325,7 +329,7 @@ def ecrire_resultats(resultats, cfg, horodatage, testees):
         lignes.append("## Le moins cher en ce moment")
         lignes.append("")
         lignes.append(
-            f"**{meilleur['prix']:.0f}** - depart le {meilleur['depart']:%d/%m/%Y}, "
+            f"**{meilleur['prix']:.0f} {cfg.get('devise', 'EUR')}** - depart le {meilleur['depart']:%d/%m/%Y}, "
             f"retour le {meilleur['retour']:%d/%m/%Y} ({meilleur['duree']} jours), "
             f"{meilleur['compagnie']}"
         )
@@ -337,7 +341,7 @@ def ecrire_resultats(resultats, cfg, horodatage, testees):
         for offre in resultats[: cfg["nombre_de_resultats"]]:
             lien = lien_google(cfg, offre["depart"], offre["retour"])
             lignes.append(
-                f"| {offre['prix']:.0f} "
+                f"| {offre['prix']:.0f} {cfg.get('devise', 'EUR')} "
                 f"| {offre['depart']:%d/%m} "
                 f"| {offre['retour']:%d/%m} "
                 f"| {offre['duree']} j "

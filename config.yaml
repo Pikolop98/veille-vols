@@ -5,7 +5,7 @@
 # ATTENTION : cette version interroge Google Flights, qui veut des codes
 # d'AEROPORT, pas de ville. Ecris CDG (et non PAR), ORY, BVA, NCE, LYS...
 origine: CDG
-destination: FOR
+destination: BKK
 
 # Fenetre de depart : n'importe quel jour entre ces deux dates
 depart_le_plus_tot: 2026-08-18
@@ -24,7 +24,7 @@ tolerance_jours: 0
 max_requetes: 60
 
 # Pause entre deux interrogations, en secondes. Ne descends pas sous 2.
-pause_secondes: 3
+pause_secondes: 8
 
 # true = uniquement les vols sans escale
 vols_directs_uniquement: false

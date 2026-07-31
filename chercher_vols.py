@@ -20,13 +20,30 @@ from pathlib import Path
 
 import yaml
 
-try:
-    from fast_flights import FlightData, Passengers, get_flights
-except ImportError:
-    sys.exit(
-        "ERREUR : la bibliotheque de recherche n'est pas installee.\n"
-        "Verifie que requirements.txt contient bien 'faster-flights'."
+# Le paquet s'appelle "faster-flights" (fork) mais a longtemps expose le
+# module "fast_flights". On essaie les deux plutot que de parier.
+BIBLIOTHEQUE = None
+for _nom in ("faster_flights", "fast_flights"):
+    try:
+        _module = __import__(_nom, fromlist=["FlightData"])
+        FlightData = getattr(_module, "FlightData")
+        Passengers = getattr(_module, "Passengers")
+        get_flights = getattr(_module, "get_flights")
+        BIBLIOTHEQUE = _nom
+        break
+    except Exception:
+        continue
+
+if BIBLIOTHEQUE is None:
+    import pkgutil
+    candidats = sorted(
+        m.name for m in pkgutil.iter_modules()
+        if "flight" in m.name.lower()
     )
+    print("ERREUR : impossible de charger la bibliotheque de recherche.")
+    print(f"Modules disponibles contenant 'flight' : {candidats or 'aucun'}")
+    print("Envoie cette liste pour qu'on corrige le nom d'import.")
+    sys.exit(1)
 
 RACINE = Path(__file__).resolve().parent
 FICHIER_RESULTATS = RACINE / "RESULTATS.md"
@@ -312,6 +329,7 @@ def main():
     horodatage = dt.datetime.now(dt.timezone.utc)
 
     print(f"Recherche {cfg['origine']} -> {cfg['destination']} (Google Flights)")
+    print(f"Bibliotheque chargee : {BIBLIOTHEQUE}")
     print(f"Depart du {cfg['depart_le_plus_tot']} au {cfg['depart_le_plus_tard']}")
     print(f"Sejours de {cfg['durees_jours']} jours (+/- {cfg['tolerance_jours']})")
     print()

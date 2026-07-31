@@ -72,9 +72,26 @@ header{border-bottom:1px solid var(--trait);padding-bottom:20px;margin-bottom:32
 .reglages{
   background:var(--panneau);border:1px solid var(--trait);border-radius:var(--r);
   padding:20px;margin-bottom:36px;
-  display:grid;gap:18px 22px;
-  grid-template-columns:repeat(auto-fit,minmax(168px,1fr));
 }
+.ligne-principale{
+  display:grid;gap:18px 22px;
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--trait);
+}
+.ligne-secondaire{
+  display:grid;gap:18px 22px;align-items:end;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+}
+.champ-large label{color:var(--craie);font-size:11.5px}
+.champ-large input{font-size:16px;padding:11px 12px}
+.indice{
+  color:var(--brume);font-size:12px;margin-top:16px;
+  padding-top:14px;border-top:1px solid var(--trait);
+}
+.bascule.inerte{opacity:.45;cursor:not-allowed}
+.bascule.inerte input{cursor:not-allowed}
+@keyframes signal{0%{color:var(--ambre)}100%{color:var(--brume)}}
+.maj{animation:signal .9s ease-out}
 .champ{display:flex;flex-direction:column;gap:7px;min-width:0}
 .champ label{
   font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--brume);
@@ -195,39 +212,42 @@ footer{
 <div class="vedette" id="vedette"></div>
 
 <div class="reglages">
-  <div class="champ">
-    <label for="apres">Départ à partir du</label>
-    <input type="date" id="apres">
-  </div>
-  <div class="champ">
-    <label for="avant">Départ jusqu'au</label>
-    <input type="date" id="avant">
-  </div>
-  <div class="champ">
-    <label for="dmin">Durée du séjour (jours)</label>
-    <div class="duo">
-      <input type="number" id="dmin" min="1" max="400" placeholder="min">
-      <input type="number" id="dmax" min="1" max="400" placeholder="max">
+  <div class="ligne-principale">
+    <div class="champ champ-large">
+      <label for="apres">Je pars à partir du</label>
+      <input type="date" id="apres">
+    </div>
+    <div class="champ champ-large">
+      <label for="dmin">Pour un séjour de … à … jours</label>
+      <div class="duo">
+        <input type="number" id="dmin" min="1" max="400" aria-label="Durée minimum">
+        <input type="number" id="dmax" min="1" max="400" aria-label="Durée maximum">
+      </div>
     </div>
   </div>
-  <div class="champ">
-    <label for="pmax">Prix maximum · <span class="mono" id="pmax-val">—</span></label>
-    <input type="range" id="pmax" min="0" max="5000" step="10">
+
+  <div class="ligne-secondaire">
+    <div class="champ">
+      <label for="pmax">Prix maximum · <span class="mono" id="pmax-val">—</span></label>
+      <input type="range" id="pmax" min="0" max="5000" step="10">
+    </div>
+    <div class="champ">
+      <label for="escales">Escales</label>
+      <select id="escales">
+        <option value="">Peu importe</option>
+        <option value="0">Vol direct</option>
+        <option value="1">1 escale maximum</option>
+        <option value="2">2 escales maximum</option>
+      </select>
+    </div>
+    <label class="bascule" id="bascule-lc">
+      <input type="checkbox" id="lowcost">
+      <span id="label-lc">Masquer les low-cost</span>
+    </label>
+    <button class="reinit" id="reinit">Tout réafficher</button>
   </div>
-  <div class="champ">
-    <label for="escales">Escales</label>
-    <select id="escales">
-      <option value="">Peu importe</option>
-      <option value="0">Vol direct</option>
-      <option value="1">1 escale maximum</option>
-      <option value="2">2 escales maximum</option>
-    </select>
-  </div>
-  <label class="bascule">
-    <input type="checkbox" id="lowcost" checked>
-    Masquer les low-cost
-  </label>
-  <button class="reinit" id="reinit">Tout réafficher</button>
+
+  <p class="indice">Les résultats se mettent à jour à chaque changement. Il n'y a rien à valider.</p>
 </div>
 
 <section>
@@ -277,7 +297,7 @@ function couleur(t){
 /* ---------- filtrage ---------- */
 function filtrees(ignorerJour){
   if(!DATA) return [];
-  const apres = $("apres").value, avant = $("avant").value;
+  const apres = $("apres").value;
   const dmin = parseInt($("dmin").value) || 0;
   const dmax = parseInt($("dmax").value) || 9999;
   const pmax = parseInt($("pmax").value) || Infinity;
@@ -287,7 +307,6 @@ function filtrees(ignorerJour){
   return DATA.offres.filter(o => {
     if(!ignorerJour && jourChoisi && o.d !== jourChoisi) return false;
     if(apres && o.d < apres) return false;
-    if(avant && o.d > avant) return false;
     if(o.j < dmin || o.j > dmax) return false;
     if(o.p > pmax) return false;
     if(esc !== "" && (o.e === null || o.e > parseInt(esc))) return false;
@@ -424,8 +443,12 @@ function dessiner(){
   const offres = filtrees(false);
   const paysage = filtrees(true);
   const dates = new Set(offres.map(o => o.d));
-  $("compteur").textContent = jourChoisi
-    ? `${offres.length} vols au départ du ${court(jourChoisi)} · clique à nouveau sur le jour pour tout revoir`
+  const compteur = $("compteur");
+  compteur.classList.remove("maj");
+  void compteur.offsetWidth;
+  compteur.classList.add("maj");
+  compteur.textContent = jourChoisi
+    ? `${offres.length} vols au départ du ${court(jourChoisi)} · clique à nouveau sur ce jour pour tout revoir`
     : `${offres.length} vols sur ${dates.size} dates de départ`;
   $("pmax-val").textContent = $("pmax").value + " " + DATA.devise;
   vedette(offres);
@@ -436,7 +459,6 @@ function dessiner(){
 function reinitialiser(){
   jourChoisi = null;
   $("apres").value = DATA.fenetre.debut;
-  $("avant").value = DATA.fenetre.fin;
   const durees = DATA.durees_cibles || [30];
   $("dmin").value = Math.min(...durees) - 4;
   $("dmax").value = Math.max(...durees) + 4;
@@ -444,7 +466,16 @@ function reinitialiser(){
   $("pmax").max = haut;
   $("pmax").value = haut;
   $("escales").value = "";
-  $("lowcost").checked = true;
+
+  const nbLC = DATA.offres.filter(o => o.lc).length;
+  const bascule = $("bascule-lc");
+  $("lowcost").checked = nbLC > 0;
+  $("lowcost").disabled = nbLC === 0;
+  bascule.classList.toggle("inerte", nbLC === 0);
+  $("label-lc").textContent = nbLC === 0
+    ? "Aucune low-cost sur ce trajet"
+    : `Masquer les low-cost (${nbLC})`;
+
   dessiner();
 }
 
@@ -461,7 +492,7 @@ fetch("donnees.json?t=" + Date.now())
        Ils bougent en permanence : ouvre le lien pour voir le tarif réel avant de réserver.<br>
        L'étiquette « bagage payant » se déduit de la compagnie, pas du billet — même sur une
        grande compagnie, un tarif basic peut exclure la soute.`;
-    ["apres","avant","dmin","dmax","pmax","escales","lowcost"].forEach(id =>
+    ["apres","dmin","dmax","pmax","escales","lowcost"].forEach(id =>
       $(id).addEventListener("input", () => { jourChoisi = null; dessiner(); }));
     $("reinit").onclick = reinitialiser;
     reinitialiser();

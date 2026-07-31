@@ -1,52 +1,57 @@
 # ============================================================
 #  C'EST LE SEUL FICHIER QUE TU AURAS BESOIN DE MODIFIER
 # ============================================================
-# Modifie les valeurs a droite des ":", puis enregistre.
-# Les codes des villes sont des codes IATA de 3 lettres.
-#   Paris = PAR   Bangkok = BKK   New York = NYC   Lisbonne = LIS
-#   (PAR couvre CDG + Orly + Beauvais, pratique pour comparer)
 
-origine: PAR
-destination: BKK
+# ATTENTION : cette version interroge Google Flights, qui veut des codes
+# d'AEROPORT, pas de ville. Ecris CDG (et non PAR), ORY, BVA, NCE, LYS...
+origine: CDG
+destination: FOR
 
 # Fenetre de depart : n'importe quel jour entre ces deux dates
 depart_le_plus_tot: 2026-08-18
 depart_le_plus_tard: 2026-08-31
 
 # Durees de sejour recherchees, en jours
-# 30 = environ 1 mois, 60 = environ 2 mois
 durees_jours: [30, 60]
 
 # Tolerance autour de ces durees.
-# 3 signifie qu'un sejour de 27 a 33 jours compte comme "1 mois".
-tolerance_jours: 3
+# ATTENTION : chaque jour de tolerance multiplie le nombre de requetes.
+# 0 = 28 requetes. 1 = 84 requetes. 3 = 196 requetes.
+# Google bloque si on l'interroge trop : reste bas.
+tolerance_jours: 0
 
-# Devise d'affichage : eur, usd, gbp...
-devise: eur
+# Plafond de securite. Au-dela, le script echantillonne au lieu de tout tester.
+max_requetes: 60
 
-# Marche source des donnees. IMPORTANT : la valeur par defaut de l'API est "ru"
-# (marche russe), ce qui donne des resultats tres pauvres au depart de France.
-marche: fr
+# Pause entre deux interrogations, en secondes. Ne descends pas sous 2.
+pause_secondes: 3
 
-# true = uniquement les vols sans escale (beaucoup plus cher en general)
+# true = uniquement les vols sans escale
 vols_directs_uniquement: false
 
 # ---------------- BAGAGES ----------------
-# Attention : l'API ne sait PAS si un billet inclut un bagage en soute.
-# Ce reglage filtre donc sur la COMPAGNIE, ce qui est une tres bonne
-# approximation (le bagage payant, c'est le modele low-cost).
-#
-# true  = ecarte les compagnies low-cost, ou la soute est presque
-#         toujours en supplement. A choisir si tu pars 1 ou 2 mois.
-# false = garde tout, y compris les billets sans bagage.
+# Google ne transmet pas non plus le detail bagage. On filtre par compagnie.
 exclure_low_cost: true
+compagnies_low_cost:
+  - Ryanair
+  - Wizz Air
+  - easyJet
+  - Transavia
+  - Vueling
+  - Eurowings
+  - Volotea
+  - Pegasus
+  - Norwegian
+  - Norse Atlantic
+  - Scoot
+  - AirAsia
+  - Jetstar
+  - Cebu Pacific
+  - VietJet
+  - Air Arabia
+  - Spirit
+  - Frontier
+  - Allegiant
 
-# Compagnies considerees comme low-cost. Ajoute ou retire des codes.
-compagnies_low_cost: [FR, W6, U2, TO, HV, VY, EW, V7, PC, DY, D8, N0,
-                      TR, AK, D7, JQ, 5J, VJ, G9, NK, F9, G4]
-
-# Compagnies a ecarter dans tous les cas, low-cost ou pas. Ex : [AF, LH]
-compagnies_exclues: []
-
-# Nombre de lignes affichees dans le tableau de resultats
+# Nombre de lignes affichees dans le tableau
 nombre_de_resultats: 20

@@ -1,2 +1,2 @@
-requests>=2.31.0
+faster-flights>=3.7.0
 PyYAML>=6.0

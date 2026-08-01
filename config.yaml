@@ -8,7 +8,10 @@
 # Codes d'AEROPORT a 3 lettres, pas de ville.
 # CDG Roissy, ORY Orly, BVA Beauvais, NCE Nice, LYS Lyon
 # FOR Fortaleza, REC Recife, NAT Natal, GRU Sao Paulo
-origine: CDG
+# PAR couvre Roissy + Orly + Beauvais d'un coup, comme le fait Google
+# quand tu tapes "Paris". C'est ce qui manquait : les vols au depart
+# d'Orly etaient invisibles.
+origine: PAR
 destination: FOR
 
 # Fenetre ratissee. Prends large : tu affineras sur la page.
@@ -20,12 +23,14 @@ durees_jours: [30, 60]
 
 # Marge autour de ces durees, et par quel pas la balayer.
 # tolerance 2 + pas 2 donne : 28, 30, 32 et 58, 60, 62 jours.
-tolerance_jours: 2
-pas_tolerance: 2
+# tolerance 4 + pas 1 donne 26,27,28...34 et 56,57...64 jours,
+# soit 18 durees au lieu de 6. La grille est bien plus fine.
+tolerance_jours: 4
+pas_tolerance: 1
 
 # Plafond de securite. Au-dela, le robot echantillonne.
-# 120 requetes a 8s font environ 20 minutes de recherche.
-max_requetes: 120
+# 260 requetes a 8s font environ 45 minutes de recherche.
+max_requetes: 260
 
 # Pause entre deux interrogations. Sous 8 secondes, Google
 # commence a ne plus repondre : c'est teste, ne descends pas.

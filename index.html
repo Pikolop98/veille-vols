@@ -88,6 +88,17 @@ header{border-bottom:1px solid var(--trait);padding-bottom:20px;margin-bottom:32
   color:var(--brume);font-size:12px;margin-top:16px;
   padding-top:14px;border-top:1px solid var(--trait);
 }
+.onglets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.onglets:empty{display:none}
+.onglet{
+  background:var(--panneau);border:1px solid var(--trait);border-radius:99px;
+  color:var(--brume);padding:8px 16px;font:inherit;font-size:13px;cursor:pointer;
+  font-family:"IBM Plex Mono",monospace;transition:all .15s;
+}
+.onglet:hover{color:var(--craie);border-color:var(--brume)}
+.onglet.actif{background:var(--ambre);border-color:var(--ambre);color:var(--nuit);font-weight:600}
+.liens{white-space:nowrap}
+.lien-second{margin-left:10px;opacity:.6;font-size:12.5px}
 .bascule.inerte{opacity:.45;cursor:not-allowed}
 .bascule.inerte input{cursor:not-allowed}
 @keyframes signal{0%{color:var(--ambre)}100%{color:var(--brume)}}
@@ -178,6 +189,7 @@ tbody tr:last-child td{border-bottom:0}
 tbody tr:hover{background:var(--panneau-clair)}
 .cell-prix{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--sable);white-space:nowrap}
 .cell-date{font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+.etiquette-ar{border-color:var(--ambre);color:var(--ambre)}
 .etiquette{
   display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
   border:1px solid var(--brique);color:var(--brique);
@@ -210,6 +222,8 @@ footer{
 </header>
 
 <div class="vedette" id="vedette"></div>
+
+<div id="onglets" class="onglets"></div>
 
 <div class="reglages">
   <div class="ligne-principale">
@@ -275,6 +289,7 @@ const JOURS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 let DATA = null;
 let tri = {colonne:"p", sens:1};
 let jourChoisi = null;
+let dstChoisie = null;
 
 const $ = id => document.getElementById(id);
 const jour = iso => { const [a,m,j] = iso.split("-").map(Number);
@@ -305,6 +320,7 @@ function filtrees(ignorerJour){
   const sansLC = $("lowcost").checked;
 
   return DATA.offres.filter(o => {
+    if(dstChoisie && (o.t || DATA.destination) !== dstChoisie) return false;
     if(!ignorerJour && jourChoisi && o.d !== jourChoisi) return false;
     if(apres && o.d < apres) return false;
     if(o.j < dmin || o.j > dmax) return false;
@@ -323,8 +339,9 @@ function vedette(offres){
   boite.innerHTML =
     `<div class="vedette-prix">${m.p}<span class="vedette-devise">${DATA.devise}</span></div>
      <div class="vedette-detail">
-       Départ le <b>${court(m.d)}</b>, retour le <b>${court(m.r)}</b><br>
+       ${(DATA.destinations || []).length > 1 ? `Vers <b>${m.t}</b> · ` : ""}Départ le <b>${court(m.d)}</b>, retour le <b>${court(m.r)}</b><br>
        ${m.j} jours sur place · ${m.c}
+       ${m.ar === false ? '<br><span style="color:var(--ambre)">Prix reconstitué : aller simple + retour simple, achetés séparément</span>' : ""}
      </div>`;
 }
 
@@ -389,10 +406,11 @@ function tableau(offres){
     return;
   }
 
-  const colonnes = [
-    ["p","Prix"],["d","Départ"],["r","Retour"],["j","Durée"],
-    ["c","Compagnie"],["e","Escales"]
-  ];
+  const multi = (DATA.destinations || []).length > 1;
+  const colonnes = [["p","Prix"]];
+  if(multi) colonnes.push(["t","Vers"]);
+  colonnes.push(["d","Départ"],["r","Retour"],["j","Durée"],
+                ["c","Compagnie"],["e","Escales"]);
 
   const rangees = [...offres].sort((a,b) => {
     const x = a[tri.colonne], y = b[tri.colonne];
@@ -411,15 +429,21 @@ function tableau(offres){
   html += `<th>Voir</th></tr></thead><tbody>`;
 
   for(const o of rangees){
-    const lien = `https://www.google.com/travel/flights?q=Flights%20from%20${DATA.origine}%20to%20${DATA.destination}%20on%20${o.d}%20through%20${o.r}`;
+    const dst = o.t || DATA.destination;
+    const g = `https://www.google.com/travel/flights?q=` +
+      encodeURIComponent(`Flights from ${DATA.origine} to ${dst} on ${o.d} through ${o.r}`) +
+      `&hl=fr&curr=${DATA.devise}`;
+    const k = `https://www.kayak.fr/flights/${DATA.origine}-${dst}/${o.d}/${o.r}?sort=price_a`;
     html += `<tr>
       <td class="cell-prix">${o.p} ${DATA.devise}</td>
+      ${multi ? `<td class="mono">${o.t}</td>` : ""}
       <td class="cell-date">${court(o.d)}</td>
       <td class="cell-date">${court(o.r)}</td>
       <td class="mono">${o.j} j</td>
-      <td>${o.c}${o.lc ? '<span class="etiquette">bagage payant</span>' : ""}</td>
+      <td>${o.c}${o.lc ? '<span class="etiquette">bagage payant</span>' : ""}${o.ar === false ? '<span class="etiquette etiquette-ar">2 allers simples</span>' : ""}</td>
       <td class="mono">${o.e === null ? "—" : o.e}</td>
-      <td><a href="${lien}" target="_blank" rel="noopener">Ouvrir</a></td>
+      <td class="liens"><a href="${k}" target="_blank" rel="noopener">Kayak</a>
+          <a href="${g}" target="_blank" rel="noopener" class="lien-second">Google</a></td>
     </tr>`;
   }
   html += `</tbody></table></div>`;
@@ -451,13 +475,27 @@ function dessiner(){
     ? `${offres.length} vols au départ du ${court(jourChoisi)} · clique à nouveau sur ce jour pour tout revoir`
     : `${offres.length} vols sur ${dates.size} dates de départ`;
   $("pmax-val").textContent = $("pmax").value + " " + DATA.devise;
+  onglets();
   vedette(offres);
   calendrier(paysage);
   tableau(offres);
 }
 
+function onglets(){
+  const liste = DATA.destinations || [DATA.destination];
+  if(liste.length < 2) return;
+  const boite = $("onglets");
+  boite.innerHTML =
+    `<button class="onglet${dstChoisie === null ? " actif" : ""}" data-dst="">Toutes</button>` +
+    liste.map(d => `<button class="onglet${dstChoisie === d ? " actif" : ""}" data-dst="${d}">${DATA.origine} → ${d}</button>`).join("");
+  boite.querySelectorAll(".onglet").forEach(b => {
+    b.onclick = () => { dstChoisie = b.dataset.dst || null; jourChoisi = null; dessiner(); };
+  });
+}
+
 function reinitialiser(){
   jourChoisi = null;
+  dstChoisie = null;
   $("apres").value = DATA.fenetre.debut;
   const durees = DATA.durees_cibles || [30];
   $("dmin").value = Math.min(...durees) - 4;
@@ -484,12 +522,17 @@ fetch("donnees.json?t=" + Date.now())
   .then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
   .then(d => {
     DATA = d;
-    $("trajet").innerHTML = `${d.origine}<span class="fleche">→</span>${d.destination}`;
+    const liste = d.destinations || [d.destination];
+    $("trajet").innerHTML = `${d.origine}<span class="fleche">→</span>${liste.join(" · ")}`;
     const h = d.genere_le.replace("T"," ").replace("Z","");
     $("releve").textContent = `Relevé du ${h} UTC · ${d.combinaisons_testees} combinaisons testées`;
     $("pied").innerHTML =
       `Prix relevés sur Google Flights au moment du passage du robot, mis à jour chaque matin.
        Ils bougent en permanence : ouvre le lien pour voir le tarif réel avant de réserver.<br>
+       Au-delà de 30 jours de séjour, Google ne renvoie plus de tarif aller-retour :
+       ces lignes sont donc reconstituées en additionnant deux allers simples, et
+       portent l'étiquette correspondante. Un vrai aller-retour est souvent moins
+       cher — vérifie sur Google Flights.<br>
        L'étiquette « bagage payant » se déduit de la compagnie, pas du billet — même sur une
        grande compagnie, un tarif basic peut exclure la soute.`;
     ["apres","dmin","dmax","pmax","escales","lowcost"].forEach(id =>

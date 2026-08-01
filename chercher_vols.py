@@ -79,7 +79,11 @@ def charger_config():
         cfg = yaml.safe_load(f)
 
     cfg["origine"] = str(cfg["origine"]).upper().strip()
-    cfg["destination"] = str(cfg["destination"]).upper().strip()
+    brut = cfg.get("destinations") or [cfg.get("destination")]
+    if isinstance(brut, str):
+        brut = [brut]
+    cfg["destinations"] = [str(d).upper().strip() for d in brut if d]
+    cfg["destination"] = cfg["destinations"][0]
     cfg["depart_le_plus_tot"] = en_date(cfg["depart_le_plus_tot"])
     cfg["depart_le_plus_tard"] = en_date(cfg["depart_le_plus_tard"])
     cfg.setdefault("durees_jours", [30, 60])
@@ -100,7 +104,7 @@ def charger_config():
     if cfg["depart_le_plus_tard"] < cfg["depart_le_plus_tot"]:
         sys.exit("ERREUR : depart_le_plus_tard est avant depart_le_plus_tot.")
 
-    for code in (cfg["origine"], cfg["destination"]):
+    for code in [cfg["origine"]] + cfg["destinations"]:
         if len(code) != 3:
             sys.exit(f"ERREUR : '{code}' n'est pas un code d'aeroport a 3 lettres.")
 
@@ -197,63 +201,63 @@ def compagnie_de(vol):
     return str(valeur) if valeur else "?"
 
 
-def interroger(cfg, depart, retour):
-    trajets = [
-        (depart, cfg["origine"], cfg["destination"]),
-        (retour, cfg["destination"], cfg["origine"]),
-    ]
-
+def _appeler(cfg, legs, trip):
+    """legs = [(date, depuis, vers), ...]. trip = 'round-trip' ou 'one-way'."""
     if API_MODERNE:
         requete = create_query(
-            flights=[
-                FlightQuery(date=d.isoformat(), from_airport=a, to_airport=b)
-                for d, a, b in trajets
-            ],
-            trip="round-trip",
-            seat="economy",
-            passengers=Passengers(adults=1),
-            language="fr-FR",
-            currency=cfg["devise"],
+            flights=[FlightQuery(date=d.isoformat(), from_airport=a, to_airport=b)
+                     for d, a, b in legs],
+            trip=trip, seat="economy", passengers=Passengers(adults=1),
+            language="fr-FR", currency=cfg["devise"],
         )
-        vols = list(get_flights(requete) or [])
-    else:
-        resultat = get_flights(
-            flight_data=[
-                FlightData(date=d.isoformat(), from_airport=a, to_airport=b)
-                for d, a, b in trajets
-            ],
-            trip="round-trip",
-            seat="economy",
-            passengers=Passengers(
-                adults=1, children=0, infants_in_seat=0, infants_on_lap=0
-            ),
-            fetch_mode="fallback",
-        )
-        vols = list(getattr(resultat, "flights", None) or [])
+        return list(get_flights(requete) or [])
 
+    resultat = get_flights(
+        flight_data=[FlightData(date=d.isoformat(), from_airport=a, to_airport=b)
+                     for d, a, b in legs],
+        trip=trip, seat="economy",
+        passengers=Passengers(adults=1, children=0,
+                              infants_in_seat=0, infants_on_lap=0),
+        fetch_mode="fallback",
+    )
+    return list(getattr(resultat, "flights", None) or [])
+
+
+def _lire(vol):
+    """Extrait prix, compagnie et escales d'un vol renvoye par la bibliotheque."""
+    inspecter(vol)
+    prix = prix_en_nombre(texte(vol, "price"))
+    if not prix:
+        return None
+    escales = texte(vol, "stops")
+    if escales is None:
+        segments = getattr(vol, "flights", None)
+        if isinstance(segments, (list, tuple)) and segments:
+            escales = len(segments) - 1
+    return {"prix": prix, "compagnie": compagnie_de(vol), "escales": escales}
+
+
+def interroger_ar(cfg, depart, retour, dst):
+    """Aller-retour classique. Google ne repond que jusqu'a 30 jours de sejour."""
+    legs = [(depart, cfg["origine"], dst), (retour, dst, cfg["origine"])]
     sorties = []
-    for vol in vols:
-        inspecter(vol)
-        prix = prix_en_nombre(texte(vol, "price"))
-        if not prix:
-            continue
-
-        escales = texte(vol, "stops")
-        if escales is None:
-            segments = getattr(vol, "flights", None)
-            if isinstance(segments, (list, tuple)) and segments:
-                escales = len(segments) - 1
-
-        sorties.append({
-            "depart": depart,
-            "retour": retour,
-            "duree": (retour - depart).days,
-            "prix": prix,
-            "compagnie": compagnie_de(vol),
-            "escales": escales,
-        })
-
+    for vol in _appeler(cfg, legs, "round-trip"):
+        lu = _lire(vol)
+        if lu:
+            sorties.append({**lu, "depart": depart, "retour": retour,
+                            "duree": (retour - depart).days,
+                            "aller_retour": True, "destination": dst})
     return sorties
+
+
+def interroger_simple(cfg, date, depuis, vers):
+    """Aller simple. Aucune limite de duree, puisqu'il n'y a pas de retour."""
+    vols = []
+    for vol in _appeler(cfg, [(date, depuis, vers)], "one-way"):
+        lu = _lire(vol)
+        if lu:
+            vols.append(lu)
+    return sorted(vols, key=lambda v: v["prix"])
 
 
 def est_low_cost(compagnie, cfg):
@@ -265,10 +269,11 @@ def dedupliquer(brutes, cfg):
     """Supprime les doublons et marque les compagnies low-cost."""
     gardees = {}
     for offre in brutes:
-        cle = (offre["depart"], offre["retour"],
+        cle = (offre.get("destination"), offre["depart"], offre["retour"],
                round(offre["prix"]), offre["compagnie"])
         if cle not in gardees:
             offre["low_cost"] = est_low_cost(offre["compagnie"], cfg)
+            offre.setdefault("aller_retour", True)
             gardees[cle] = offre
     return sorted(gardees.values(), key=lambda o: o["prix"])
 
@@ -281,7 +286,8 @@ def ecrire_json(offres, cfg, horodatage, testees):
     donnees = {
         "genere_le": horodatage.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "origine": cfg["origine"],
-        "destination": cfg["destination"],
+        "destination": cfg["destinations"][0],
+        "destinations": cfg["destinations"],
         "devise": cfg["devise"],
         "fenetre": {
             "debut": cfg["depart_le_plus_tot"].isoformat(),
@@ -298,6 +304,8 @@ def ecrire_json(offres, cfg, horodatage, testees):
                 "c": o["compagnie"],
                 "e": o["escales"] if o["escales"] is not None else None,
                 "lc": bool(o["low_cost"]),
+                "ar": bool(o.get("aller_retour", True)),
+                "t": o.get("destination", cfg["destinations"][0]),
             }
             for o in offres
         ],
@@ -387,59 +395,145 @@ def ajouter_historique(offres, cfg, horodatage):
 
 # ------------------------------------------------------------------
 
+def dates_de_depart(cfg):
+    jours, j = [], cfg["depart_le_plus_tot"]
+    while j <= cfg["depart_le_plus_tard"]:
+        jours.append(j)
+        j += dt.timedelta(days=1)
+    return jours
+
+
+def chercher_destination(cfg, dst, departs, courtes, longues, pause):
+    """Balaye une destination : aller-retours courts + allers simples longs."""
+    brutes, echecs, premiere = [], 0, None
+
+    couples = [(d, d + dt.timedelta(days=n)) for d in departs for n in courtes]
+    plafond = int(cfg["max_requetes"])
+    if len(couples) > plafond:
+        pas = len(couples) / plafond
+        couples = [couples[int(i * pas)] for i in range(plafond)]
+
+    print(f"  Phase 1 : {len(couples)} aller-retours")
+    for i, (depart, retour) in enumerate(couples, 1):
+        try:
+            vols = interroger_ar(cfg, depart, retour, dst)
+            brutes.extend(vols)
+            marque = f"{len(vols)} vols"
+        except Exception as e:
+            echecs += 1
+            marque = "echec"
+            premiere = premiere or f"{type(e).__name__} : {e}"
+        print(f"    [AR {i}/{len(couples)}] {depart} -> {retour} "
+              f"({(retour-depart).days} j) : {marque}")
+        time.sleep(pause)
+
+    if longues:
+        retours_voulus = sorted({d + dt.timedelta(days=n)
+                                 for d in departs for n in longues})
+        print(f"  Phase 2 : {len(departs)} allers + {len(retours_voulus)} retours")
+        allers, retours = {}, {}
+
+        for i, d in enumerate(departs, 1):
+            try:
+                allers[d] = interroger_simple(cfg, d, cfg["origine"], dst)
+                marque = f"{len(allers[d])} vols"
+            except Exception as e:
+                echecs += 1
+                marque = "echec"
+                premiere = premiere or f"{type(e).__name__} : {e}"
+            print(f"    [ALLER {i}/{len(departs)}] {d} : {marque}")
+            time.sleep(pause)
+
+        for i, r in enumerate(retours_voulus, 1):
+            try:
+                retours[r] = interroger_simple(cfg, r, dst, cfg["origine"])
+                marque = f"{len(retours[r])} vols"
+            except Exception as e:
+                echecs += 1
+                marque = "echec"
+                premiere = premiere or f"{type(e).__name__} : {e}"
+            print(f"    [RETOUR {i}/{len(retours_voulus)}] {r} : {marque}")
+            time.sleep(pause)
+
+        combines = 0
+        for d in departs:
+            for n in longues:
+                r = d + dt.timedelta(days=n)
+                a, b = allers.get(d), retours.get(r)
+                if not a or not b:
+                    continue
+                va, vb = a[0], b[0]
+                escales = None
+                if va["escales"] is not None and vb["escales"] is not None:
+                    escales = max(va["escales"], vb["escales"])
+                brutes.append({
+                    "depart": d, "retour": r, "duree": n,
+                    "prix": va["prix"] + vb["prix"],
+                    "compagnie": f"{va['compagnie']} + {vb['compagnie']}",
+                    "escales": escales, "aller_retour": False,
+                    "destination": dst,
+                })
+                combines += 1
+        print(f"    -> {combines} longs sejours reconstitues")
+
+    return brutes, echecs, premiere
+
+
+def dates_de_depart(cfg):
+    jours, j = [], cfg["depart_le_plus_tot"]
+    while j <= cfg["depart_le_plus_tard"]:
+        jours.append(j)
+        j += dt.timedelta(days=1)
+    return jours
+
+
 def main():
     cfg = charger_config()
     horodatage = dt.datetime.now(dt.timezone.utc)
+    seuil = int(cfg.get("seuil_aller_retour", 30))
+    pause = cfg["pause_secondes"]
 
-    print(f"Recherche {cfg['origine']} -> {cfg['destination']} (Google Flights)")
+    departs = dates_de_depart(cfg)
+    durees = durees_a_tester(cfg)
+    courtes = [d for d in durees if d <= seuil]
+    longues = [d for d in durees if d > seuil]
+
+    print(f"Depart de {cfg['origine']} vers {', '.join(cfg['destinations'])}")
     print(f"Bibliotheque : {BIBLIOTHEQUE}, interface "
           f"{'v3' if API_MODERNE else 'v2'}")
     print(f"Depart du {cfg['depart_le_plus_tot']} au {cfg['depart_le_plus_tard']}")
-    print(f"Durees testees : {durees_a_tester(cfg)}")
+    print(f"Sejours courts (aller-retour) : {courtes}")
+    print(f"Sejours longs (2 allers simples) : {longues}")
     print()
 
-    couples = paires_de_dates(cfg)
-    minutes = len(couples) * (cfg["pause_secondes"] + 2) // 60 + 1
-    print(f"{len(couples)} combinaisons, {cfg['pause_secondes']}s de pause.")
-    print(f"Duree estimee : environ {minutes} minutes.")
-    print()
+    brutes, echecs, premiere = [], 0, None
+    for n, dst in enumerate(cfg["destinations"], 1):
+        print(f"=== Destination {n}/{len(cfg['destinations'])} : {dst} ===")
+        b, e, p = chercher_destination(cfg, dst, departs, courtes, longues, pause)
+        brutes.extend(b)
+        echecs += e
+        premiere = premiere or p
+        print()
 
-    brutes = []
-    echecs = 0
-    premiere_erreur = None
-
-    for i, (depart, retour) in enumerate(couples, 1):
-        try:
-            vols = interroger(cfg, depart, retour)
-            brutes.extend(vols)
-            marque = f"{len(vols)} vols"
-        except Exception as erreur:
-            echecs += 1
-            marque = "echec"
-            if premiere_erreur is None:
-                premiere_erreur = f"{type(erreur).__name__} : {erreur}"
-
-        print(f"  [{i}/{len(couples)}] {depart} -> {retour} ({(retour-depart).days} j) : {marque}")
-        time.sleep(cfg["pause_secondes"])
-
-    print()
     print(f"{len(brutes)} vols recuperes, {echecs} interrogations en echec.")
-    if premiere_erreur:
-        print(f"Premiere erreur : {premiere_erreur}")
+    if premiere:
+        print(f"Premiere erreur : {premiere}")
 
     offres = dedupliquer(brutes, cfg)
-    low_cost = sum(1 for o in offres if o["low_cost"])
-    print(f"{len(offres)} offres uniques ({low_cost} low-cost, "
-          f"filtrables depuis la page).")
+    longs = sum(1 for o in offres if not o.get("aller_retour", True))
+    print(f"{len(offres)} offres uniques, dont {longs} en 2 allers simples.")
+    for dst in cfg["destinations"]:
+        n = sum(1 for o in offres if o.get("destination") == dst)
+        print(f"  {dst} : {n} offres")
 
-    ecrire_json(offres, cfg, horodatage, len(couples))
-    ecrire_resultats(offres, cfg, horodatage, len(couples))
+    ecrire_json(offres, cfg, horodatage, len(brutes))
+    ecrire_resultats(offres, cfg, horodatage, len(brutes))
     ajouter_historique(offres, cfg, horodatage)
 
     if offres:
         m = offres[0]
-        print(f"\nMoins cher toutes compagnies : {m['prix']:.0f} {cfg['devise']} "
-              f"({m['depart']:%d/%m} -> {m['retour']:%d/%m}, "
+        print(f"\nMoins cher : {m['prix']:.0f} {cfg['devise']} vers "
+              f"{m.get('destination')} ({m['depart']:%d/%m} -> {m['retour']:%d/%m}, "
               f"{m['duree']} j, {m['compagnie']})")
 
     print(f"\nEcrit dans {FICHIER_JSON.name}, {FICHIER_RESULTATS.name} "

@@ -12,7 +12,15 @@
 # quand tu tapes "Paris". C'est ce qui manquait : les vols au depart
 # d'Orly etaient invisibles.
 origine: PAR
-destination: FOR
+
+# Une ou plusieurs destinations. Chaque ligne commence par un tiret.
+# ATTENTION : le temps de recherche est multiplie par leur nombre.
+# 1 destination = ~40 min. 2 = ~80 min. 3 = ~2 h.
+# Au-dela de 3, reduis la fenetre de dates ou max_requetes.
+destinations:
+  - FOR
+# - REC
+# - NAT
 
 # Fenetre ratissee. Prends large : tu affineras sur la page.
 depart_le_plus_tot: 2026-08-15
@@ -29,12 +37,17 @@ tolerance_jours: 4
 pas_tolerance: 1
 
 # Plafond de securite. Au-dela, le robot echantillonne.
-# 260 requetes a 8s font environ 45 minutes de recherche.
-max_requetes: 260
+# Plafond de la phase aller-retour uniquement.
+max_requetes: 170
 
 # Pause entre deux interrogations. Sous 8 secondes, Google
 # commence a ne plus repondre : c'est teste, ne descends pas.
 pause_secondes: 8
+
+# Au-dela de cette duree de sejour, Google ne renvoie plus rien en
+# aller-retour. Le robot bascule alors sur deux allers simples.
+# Verifie sur ton journal : le seuil observe est 30 jours.
+seuil_aller_retour: 30
 
 # Devise des prix demandes a Google
 devise: EUR

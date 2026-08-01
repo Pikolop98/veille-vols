@@ -11,7 +11,7 @@ permissions:
 jobs:
   chercher:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
 
     steps:
       - name: Recuperer le code du depot

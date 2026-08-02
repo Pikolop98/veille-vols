@@ -1,15 +1,16 @@
 # Prix les moins chers : PAR vers FOR
 
-*Releve du 01/08/2026 a 08h13 UTC, 1401 combinaisons testees.*
+*Releve du 02/08/2026 a 08h15 UTC, 1394 combinaisons testees.*
 
 La version consultable est la page web du depot. Ce fichier est une copie de secours.
 
 ## Le moins cher en ce moment
 
-**831 EUR** - depart le 01/09/2026, retour le 29/09/2026 (28 jours), Iberia
+**829 EUR** - depart le 01/09/2026, retour le 01/10/2026 (30 jours), Iberia
 
 | Prix | Depart | Retour | Duree | Compagnie | Escales | Voir |
 |---|---|---|---|---|---|---|
+| 829 EUR | 01/09 | 01/10 | 30 j | Iberia | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-09-01%20through%202026-10-01) |
 | 831 EUR | 01/09 | 29/09 | 28 j | Iberia | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-09-01%20through%202026-09-29) |
 | 856 EUR | 18/08 | 13/09 | 26 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-18%20through%202026-09-13) |
 | 856 EUR | 18/08 | 14/09 | 27 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-18%20through%202026-09-14) |
@@ -29,7 +30,6 @@ La version consultable est la page web du depot. Ce fichier est une copie de sec
 | 856 EUR | 28/08 | 23/09 | 26 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-28%20through%202026-09-23) |
 | 856 EUR | 28/08 | 24/09 | 27 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-28%20through%202026-09-24) |
 | 856 EUR | 28/08 | 25/09 | 28 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-28%20through%202026-09-25) |
-| 856 EUR | 28/08 | 26/09 | 29 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-28%20through%202026-09-26) |
 
 ---
 

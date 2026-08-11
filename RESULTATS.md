@@ -1,17 +1,17 @@
 # Prix les moins chers : PAR vers FOR
 
-*Releve du 10/08/2026 a 07h23 UTC, 1423 combinaisons testees.*
+*Releve du 11/08/2026 a 06h59 UTC, 1444 combinaisons testees.*
 
 La version consultable est la page web du depot. Ce fichier est une copie de secours.
 
 ## Le moins cher en ce moment
 
-**820 EUR** - depart le 30/08/2026, retour le 29/09/2026 (30 jours), Iberia
+**820 EUR** - depart le 01/09/2026, retour le 29/09/2026 (28 jours), Iberia
 
 | Prix | Depart | Retour | Duree | Compagnie | Escales | Voir |
 |---|---|---|---|---|---|---|
-| 820 EUR | 30/08 | 29/09 | 30 j | Iberia | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-30%20through%202026-09-29) |
 | 820 EUR | 01/09 | 29/09 | 28 j | Iberia | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-09-01%20through%202026-09-29) |
+| 850 EUR | 30/08 | 27/09 | 28 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-30%20through%202026-09-27) |
 | 856 EUR | 16/08 | 13/09 | 28 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-16%20through%202026-09-13) |
 | 856 EUR | 16/08 | 14/09 | 29 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-16%20through%202026-09-14) |
 | 856 EUR | 17/08 | 13/09 | 27 j | Tap Air Portugal | 1 | [ouvrir](https://www.google.com/travel/flights?q=Flights%20from%20PAR%20to%20FOR%20on%202026-08-17%20through%202026-09-13) |

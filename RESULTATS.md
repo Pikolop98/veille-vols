@@ -1,6 +1,6 @@
 # Prix les moins chers : PAR vers FOR
 
-*Releve du 05/11/2026 a 13h54 UTC, 0 combinaisons testees.*
+*Releve du 06/11/2026 a 13h40 UTC, 0 combinaisons testees.*
 
 La version consultable est la page web du depot. Ce fichier est une copie de secours.
 
